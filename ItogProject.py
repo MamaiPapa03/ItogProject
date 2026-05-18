@@ -2,34 +2,27 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import json
 from datetime import datetime
-
 class WeatherDiary:
     def __init__(self, root):
         self.root = root
         self.root.title("Weather Diary")
         self.entries = []
         self.load_data()
-
         # Поля ввода
         tk.Label(root, text="Дата (ДД.ММ.ГГГГ):").grid(row=0, column=0, sticky="w")
         self.date_entry = tk.Entry(root)
         self.date_entry.grid(row=0, column=1, padx=5, pady=5)
-
         tk.Label(root, text="Температура (°C):").grid(row=1, column=0, sticky="w")
         self.temp_entry = tk.Entry(root)
         self.temp_entry.grid(row=1, column=1, padx=5, pady=5)
-
         tk.Label(root, text="Описание погоды:").grid(row=2, column=0, sticky="w")
         self.desc_entry = tk.Entry(root)
         self.desc_entry.grid(row=2, column=1, padx=5, pady=5)
-
         tk.Label(root, text="Осадки:").grid(row=3, column=0, sticky="w")
         self.rain_var = tk.BooleanVar()
         tk.Checkbutton(root, variable=self.rain_var).grid(row=3, column=1, sticky="w")
-
         # Кнопка добавления
         tk.Button(root, text="Добавить запись", command=self.add_entry).grid(row=4, column=0, columnspan=2, pady=10)
-
         # Таблица для отображения записей
         self.tree = ttk.Treeview(root, columns=("Date", "Temp", "Desc", "Rain"), show="headings")
         self.tree.heading("Date", text="Дата")
@@ -37,46 +30,37 @@ class WeatherDiary:
         self.tree.heading("Desc", text="Описание")
         self.tree.heading("Rain", text="Осадки")
         self.tree.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
-
         # Фильтры
         tk.Label(root, text="Фильтр по дате (ДД.ММ.ГГГГ):").grid(row=6, column=0, sticky="w")
         self.filter_date_entry = tk.Entry(root)
         self.filter_date_entry.grid(row=6, column=1, padx=5, pady=5)
-
         tk.Label(root, text="Фильтр по температуре (>):").grid(row=7, column=0, sticky="w")
         self.filter_temp_entry = tk.Entry(root)
         self.filter_temp_entry.grid(row=7, column=1, padx=5, pady=5)
-
         tk.Button(root, text="Применить фильтры", command=self.apply_filters).grid(row=8, column=0, columnspan=2, pady=5)
         tk.Button(root, text="Сбросить фильтры", command=self.reset_filters).grid(row=9, column=0, columnspan=2, pady=5)
-
         # Кнопки сохранения/загрузки
         tk.Button(root, text="Сохранить в JSON", command=self.save_data).grid(row=10, column=0, pady=10)
         tk.Button(root, text="Загрузить из JSON", command=self.load_data).grid(row=10, column=1, pady=10)
-
       def add_entry(self):
         date_str = self.date_entry.get()
         temp_str = self.temp_entry.get()
         desc = self.desc_entry.get()
         rain = self.rain_var.get()
-
-        # Проверка корректности
+          # Проверка корректности
         try:
             date = datetime.strptime(date_str, "%d.%m.%Y").date()
         except ValueError:
             messagebox.showerror("Ошибка", "Неверный формат даты. Используйте ДД.ММ.ГГГГ")
             return
-
         try:
             temp = float(temp_str)
         except ValueError:
             messagebox.showerror("Ошибка", "Температура должна быть числом")
             return
-
         if not desc:
             messagebox.showerror("Ошибка", "Описание не может быть пустым")
             return
-
         # Добавление записи
         entry = {
             "date": date_str,
