@@ -163,3 +163,41 @@ class QuoteGenerator:
         self.author_filter.delete(0, tk.END)
         self.topic_filter.delete(0, tk.END)
         self.update_history_display()
+            def update_history_display(self):
+        """Обновление отображения истории с фильтрами"""
+        # Очищаем текущее содержимое
+        for item in self.history_tree.get_children():
+            self.history_tree.delete(item)
+
+        # Получаем отфильтрованную историю
+        filtered_history = self.apply_current_filters(self.history)
+
+        # Заполняем таблицу
+        for quote in filtered_history:
+            self.history_tree.insert("", "end", values=(
+                quote['author'],
+                quote['topic'],
+                quote['text']
+            ))
+
+    def validate_input(self, text, author, topic):
+        """Валидация вводимых данных"""
+        if not text.strip():
+            messagebox.showerror("Ошибка", "Текст цитаты не может быть пустым")
+            return False
+        if not author.strip():
+            messagebox.showerror("Ошибка", "Автор не может быть пустым")
+            return False
+        if not topic.strip():
+            messagebox.showerror("Ошибка", "Тема не может быть пустой")
+            return False
+        return True
+
+
+
+# Точка входа в приложение
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = QuoteGenerator(root)
+    root.mainloop()
+
