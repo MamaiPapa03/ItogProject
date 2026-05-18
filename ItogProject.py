@@ -1,131 +1,149 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
+import random
+import string
 import json
-from datetime import datetime
-class WeatherDiary:
+import os
+
+class PasswordGenerator:
     def __init__(self, root):
         self.root = root
-        self.root.title("Weather Diary")
-        self.entries = []
-        self.load_data()
-        # Поля ввода
-        tk.Label(root, text="Дата (ДД.ММ.ГГГГ):").grid(row=0, column=0, sticky="w")
-        self.date_entry = tk.Entry(root)
-        self.date_entry.grid(row=0, column=1, padx=5, pady=5)
-        tk.Label(root, text="Температура (°C):").grid(row=1, column=0, sticky="w")
-        self.temp_entry = tk.Entry(root)
-        self.temp_entry.grid(row=1, column=1, padx=5, pady=5)
-        tk.Label(root, text="Описание погоды:").grid(row=2, column=0, sticky="w")
-        self.desc_entry = tk.Entry(root)
-        self.desc_entry.grid(row=2, column=1, padx=5, pady=5)
-        tk.Label(root, text="Осадки:").grid(row=3, column=0, sticky="w")
-        self.rain_var = tk.BooleanVar()
-        tk.Checkbutton(root, variable=self.rain_var).grid(row=3, column=1, sticky="w")
-        # Кнопка добавления
-        tk.Button(root, text="Добавить запись", command=self.add_entry).grid(row=4, column=0, columnspan=2, pady=10)
-        # Таблица для отображения записей
-        self.tree = ttk.Treeview(root, columns=("Date", "Temp", "Desc", "Rain"), show="headings")
-        self.tree.heading("Date", text="Дата")
-        self.tree.heading("Temp", text="Температура")
-        self.tree.heading("Desc", text="Описание")
-        self.tree.heading("Rain", text="Осадки")
-        self.tree.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="nsew")
-        # Фильтры
-        tk.Label(root, text="Фильтр по дате (ДД.ММ.ГГГГ):").grid(row=6, column=0, sticky="w")
-        self.filter_date_entry = tk.Entry(root)
-        self.filter_date_entry.grid(row=6, column=1, padx=5, pady=5)
-        tk.Label(root, text="Фильтр по температуре (>):").grid(row=7, column=0, sticky="w")
-        self.filter_temp_entry = tk.Entry(root)
-        self.filter_temp_entry.grid(row=7, column=1, padx=5, pady=5)
-        tk.Button(root, text="Применить фильтры", command=self.apply_filters).grid(row=8, column=0, columnspan=2, pady=5)
-        tk.Button(root, text="Сбросить фильтры", command=self.reset_filters).grid(row=9, column=0, columnspan=2, pady=5)
-        # Кнопки сохранения/загрузки
-        tk.Button(root, text="Сохранить в JSON", command=self.save_data).grid(row=10, column=0, pady=10)
-        tk.Button(root, text="Загрузить из JSON", command=self.load_data).grid(row=10, column=1, pady=10)
-      def add_entry(self):
-        date_str = self.date_entry.get()
-        temp_str = self.temp_entry.get()
-        desc = self.desc_entry.get()
-        rain = self.rain_var.get()
-          # Проверка корректности
-        try:
-            date = datetime.strptime(date_str, "%d.%m.%Y").date()
-        except ValueError:
-            messagebox.showerror("Ошибка", "Неверный формат даты. Используйте ДД.ММ.ГГГГ")
+        self.root.title("Random Password Generator")
+        self.root.geometry("600x500")
+
+        # Переменные
+        self.length = tk.IntVar(value=12)
+        self.use_digits = tk.BooleanVar(value=True)
+        self.use_letters = tk.BooleanVar(value=True)
+        self.use_special = tk.BooleanVar(value=False)
+
+        self.history = self.load_history()
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        # Ползунок длины пароля
+        ttk.Label(self.root, text="Длина пароля (8-64):").pack(pady=5)
+        length_slider = ttk.Scale(
+            self.root,
+            from_=8,
+            to=64,
+            orient="horizontal",
+            variable=self.length
+        )
+        length_slider.pack(fill="x", padx=20)
+
+        length_label = ttk.Label(self.root, textvariable=self.length)
+        length_label.pack()
+
+        # Чекбоксы выбора символов
+        ttk.Checkbutton(
+            self.root,
+            text="Цифры (0-9)",
+            variable=self.use_digits
+        ).pack(anchor="w", padx=20)
+        ttk.Checkbutton(
+            self.root,
+            text="Буквы (A-Z, a-z)",
+            variable=self.use_letters
+        ).pack(anchor="w", padx=20)
+        ttk.Checkbutton(
+            self.root,
+            text="Спецсимволы (!@#$% и т. д.)",
+            variable=self.use_special
+        ).pack(anchor="w", padx=20)
+
+        # Кнопка генерации
+        generate_btn = ttk.Button(
+            self.root,
+            text="Сгенерировать пароль",
+            command=self.generate_password
+        )
+        generate_btn.pack(pady=20)
+
+        # Поле вывода пароля
+        self.password_var = tk.StringVar()
+        password_entry = ttk.Entry(
+            self.root,
+            textvariable=self.password_var,
+            state="readonly",
+            font=("Courier", 12)
+        )
+        password_entry.pack(fill="x", padx=20, pady=5)
+
+        # Таблица истории
+        ttk.Label(self.root, text="История паролей:").pack(anchor="w", padx=20)
+        columns = ("ID", "Пароль", "Длина", "Символы")
+        self.tree = ttk.Treeview(self.root, columns=columns, show="headings", height=8)
+
+        for col in columns:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=100)
+
+        self.tree.pack(fill="both", expand=True, padx=20, pady=10)
+
+        self.update_history_table()
+
+    def generate_password(self):
+        length = self.length.get()
+
+        if length < 8 or length > 64:
+            messagebox.showerror("Ошибка", "Длина пароля должна быть от 8 до 64 символов!")
             return
-        try:
-            temp = float(temp_str)
-        except ValueError:
-            messagebox.showerror("Ошибка", "Температура должна быть числом")
+
+        chars = ""
+        if self.use_digits.get():
+            chars += string.digits
+        if self.use_letters.get():
+            chars += string.ascii_letters
+        if self.use_special.get():
+            chars += "!@#$%^&*()_+-=[]{}|;:,.<>?"
+
+        if not chars:
+            messagebox.showerror("Ошибка", "Выберите хотя бы один тип символов!")
             return
-        if not desc:
-            messagebox.showerror("Ошибка", "Описание не может быть пустым")
-            return
-        # Добавление записи
-        entry = {
-            "date": date_str,
-            "temperature": temp,
-            "description": desc,
-            "rain": rain
+
+        password = ''.join(random.choice(chars) for _ in range(length))
+        self.password_var.set(password)
+
+        # Добавляем в историю
+        char_types = []
+        if self.use_digits.get(): char_types.append("Цифры")
+        if self.use_letters.get(): char_types.append("Буквы")
+        if self.use_special.get(): char_types.append("Спецсимволы")
+
+        history_item = {
+            "password": password,
+            "length": length,
+            "characters": ", ".join(char_types)
         }
-        self.entries.append(entry)
-        self.update_table()
-        self.clear_inputs()
-    def apply_filters(self):
-        filtered = self.entries
-        date_filter = self.filter_date_entry.get()
-        temp_filter_str = self.filter_temp_entry.get()
+        self.history.append(history_item)
+        self.save_history()
+        self.update_history_table()
 
-        if date_filter:
-            filtered = [e for e in filtered if e["date"] == date_filter]
-
-        if temp_filter_str:
-            try:
-                temp_filter = float(temp_filter_str)
-                filtered = [e for e in filtered if e["temperature"] > temp_filter]
-            except ValueError:
-                messagebox.showerror("Ошибка", "Температура фильтра должна быть числом")
-                return
-
-        self.update_table(filtered)
-
-    def reset_filters(self):
-        self.filter_date_entry.delete(0, tk.END)
-        self.filter_temp_entry.delete(0, tk.END)
-        self.update_table()
-    def save_data(self):
-        with open("weather_diary.json", "w", encoding="utf-8") as f:
-            json.dump(self.entries, f, ensure_ascii=False, indent=4)
-        messagebox.showinfo("Успех", "Данные сохранены в weather_diary.json")
-
-    def load_data(self):
-        try:
-            with open("weather_diary.json", "r", encoding="utf-8") as f:
-                self.entries = json.load(f)
-            self.update_table()
-            messagebox.showinfo("Успех", "Данные загружены из weather_diary.json")
-        except FileNotFoundError:
-            self.entries = []
-    def update_table(self, entries=None):
+    def update_history_table(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
-        entries = entries or self.entries
-        for entry in entries:
-            rain_text = "Да" if entry["rain"] else "Нет"
+
+        for i, item in enumerate(self.history[-10:], 1):
             self.tree.insert("", "end", values=(
-                entry["date"],
-                f"{entry['temperature']}°C",
-                entry["description"],
-                rain_text
+                i,
+                item["password"],
+                item["length"],
+                item["characters"]
             ))
 
-    def clear_inputs(self):
-        self.date_entry.delete(0, tk.END)
-        self.temp_entry.delete(0, tk.END)
-        self.desc_entry.delete(0, tk.END)
-        self.rain_var.set(False)
+    def load_history(self):
+        if os.path.exists("history.json"):
+            with open("history.json", "r", encoding="utf-8") as f:
+                return json.load(f)
+        return []
+
+    def save_history(self):
+        with open("history.json", "w", encoding="utf-8") as f:
+            json.dump(self.history, f, ensure_ascii=False, indent=2)
+
 if __name__ == "__main__":
     root = tk.Tk()
-    app = WeatherDiary(root)
+    app = PasswordGenerator(root)
     root.mainloop()
-
